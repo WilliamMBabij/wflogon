@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+  <Product Id="*" Name="WFLogon Uninstaller" Language="1033" Version="1.0.0" Manufacturer="YourCompany" UpgradeCode="fa855363-abcb-4261-9f8f-f7273fcbd6d8">
+    <Package InstallerVersion="200" Compressed="yes" InstallScope="perMachine" />
+
+    <MajorUpgrade DowngradeErrorMessage="A newer version of [ProductName] is already installed." />
+
+    <MediaTemplate EmbedCab="yes" />
+
+    <Feature Id="ProductFeature" Title="WFLogon" Level="1">
+      <ComponentGroupRef Id="ProductComponents" />
+    </Feature>
+
+    <UIRef Id="WixUI_Minimal" />
+
+    <!-- Custom action to uninstall Node.js -->
+    <CustomAction Id="UninstallNodeJs" Directory="INSTALLFOLDER" ExeCommand="msiexec /x &quot;[INSTALLFOLDER]node-v14.17.0-x64.msi&quot; /quiet" Execute="deferred" Return="check" />
+
+    <!-- Schedule the custom action to run during uninstallation -->
+    <InstallExecuteSequence>
+      <Custom Action="UninstallNodeJs" Before="RemoveFiles" />
+    </InstallExecuteSequence>
+
+    <!-- Remove startup item for all users -->
+    <DirectoryRef Id="TARGETDIR">
+      <Component Id="StartupComponent" Guid="fa855363-abcb-4261-9f8f-f7273fcbd6d8">
+        <RegistryKey Root="HKLM" Key="Software\Microsoft\Windows\CurrentVersion\Run" Action="removeOnUninstall">
+          <RegistryValue Name="WFLogon" Type="string" />
+        </RegistryKey>
+      </Component>
+    </DirectoryRef>
+    <Feature Id="StartupFeature" Title="Startup" Level="1">
+      <ComponentRef Id="StartupComponent" />
+    </Feature>
+
+    <!-- Remove the application file -->
+    <ComponentGroup Id="ProductComponents" Directory="INSTALLFOLDER">
+      <Component Id="ApplicationFile" Guid="fa855363-abcb-4261-9f8f-f7273fcbd6d8">
+        <File Id="wflogon.exe" Source="path\to\WFLogon.js" KeyPath="yes" />
+      </Component>
+    </ComponentGroup>
+
+    <!-- Remove the scheduled task -->
+    <CustomAction Id="RemoveScheduledTask" Directory="INSTALLFOLDER" ExeCommand="schtasks /delete /tn WFLogonStartup /f" Execute="deferred" Return="check" />
+
+    <!-- Schedule the custom action to run during uninstallation -->
+    <InstallExecuteSequence>
+      <Custom Action="RemoveScheduledTask" Before="RemoveFiles" />
+    </InstallExecuteSequence>
+
+    <!-- Remove the log file -->
+    <CustomAction Id="RemoveLogFile" Directory="INSTALLFOLDER" ExeCommand="cmd /c del &quot;[INSTALLFOLDER]wflogon_error.txt&quot;" Execute="deferred" Return="ignore" />
+
+    <!-- Schedule the custom action to run during uninstallation -->
+    <InstallExecuteSequence>
+      <Custom Action="RemoveLogFile" Before="RemoveFiles" />
+    </InstallExecuteSequence>
+
+    <!-- Remove the error log directory -->
+    <CustomAction Id="RemoveErrorLogDirectory" Directory="INSTALLFOLDER" ExeCommand="cmd /c rmdir /s /q &quot;[INSTALLFOLDER]AppData\Local\wflogon&quot;" Execute="deferred" Return="ignore" />
+
+    <!-- Schedule the custom action to run during uninstallation -->
+    <InstallExecuteSequence>
+      <Custom Action="RemoveErrorLogDirectory" Before="RemoveFiles" />
+    </InstallExecuteSequence>
+
+    <!-- Remove previous version components and settings -->
+    <Upgrade Id="fa855363-abcb-4261-9f8f-f7273fcbd6d8">
+      <UpgradeVersion Minimum="0.0.0" Maximum="1.0.0" IncludeMinimum="yes" IncludeMaximum="no" Property="PREVIOUSVERSIONSINSTALLED" />
+    </Upgrade>
+    <RemoveExistingProducts After="InstallInitialize" />
+
+  </Product>
+</Wix>

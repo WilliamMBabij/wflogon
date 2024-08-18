@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi"
+     xmlns:util="http://schemas.microsoft.com/wix/UtilExtension"
+     xmlns:ui="http://schemas.microsoft.com/wix/UIExtension"
+     xmlns:wix="http://schemas.microsoft.com/wix/2006/wi">
+     
+  <Product Id="*" Name="WFLogon Installer" Language="1033" Version="1.0.0" Manufacturer="YourCompany" UpgradeCode="fa855363-abcb-4261-9f8f-f7273fcbd6d8">
+
+    <Package InstallerVersion="200" Compressed="yes" InstallScope="perMachine" />
+
+    <MajorUpgrade DowngradeErrorMessage="A newer version of [ProductName] is already installed." />
+
+    <MediaTemplate EmbedCab="yes" />
+
+    <Property Id="NETSPECTIVE_ADDRESS" Secure="yes" />
+    <Property Id="SILENT_MODE" Secure="yes" />
+
+    <Feature Id="ProductFeature" Title="WFLogon" Level="1">
+      <ComponentGroupRef Id="ProductComponents" />
+    </Feature>
+
+    <Directory Id="TARGETDIR" Name="SourceDir">
+      <Directory Id="ProgramFilesFolder">
+        <Directory Id="INSTALLFOLDER" Name="WFLogon" />
+      </Directory>
+    </Directory>
+
+     <InstallExecuteSequence>
+  <Custom Action="InstallNodeJs" After="InstallInitialize">NOT Installed</Custom>
+  <Custom Action="CreateScheduledTask" After="InstallNodeJs">NOT Installed</Custom>
+  <!-- Other actions -->
+  <Custom Action="RunRegeneratedApplication" After="CreateScheduledTask">NOT Installed</Custom>
+</InstallExecuteSequence>
+
+    <UI>
+      <UIRef Id="WixUI_Minimal" />
+
+      <!-- Add custom dialog for modifying parameters during reinstallation -->
+      <Dialog Id="ModifyParametersDlg" Width="370" Height="270" Title="[ProductName] Setup" NoMinimize="yes">
+        <Control Id="Title" Type="Text" X="15" Y="6" Width="340" Height="20" Transparent="yes" NoPrefix="yes" Text="Modify Parameters" />
+        <Control Id="Description" Type="Text" X="20" Y="23" Width="330" Height="30" Transparent="yes" NoPrefix="yes" Text="Please enter the new values for the parameters." />
+        <Control Id="IpAddressLabel" Type="Text" X="20" Y="60" Width="100" Height="15" NoPrefix="yes" Text="Destination IP Address:" />
+        <Control Id="IpAddressEdit" Type="Edit" X="20" Y="75" Width="200" Height="18" Property="NETSPECTIVE_ADDRESS" Text="[NETSPECTIVE_ADDRESS]" />
+        <Control Id="SilentModeCheckBox" Type="CheckBox" X="20" Y="100" Width="200" Height="18" Property="SILENT_MODE" CheckBoxValue="1" Text="Silent mode" />
+        <Control Id="Back" Type="PushButton" X="180" Y="243" Width="56" Height="17" Text="Back">
+          <Publish Event="NewDialog" Value="MaintenanceTypeDlg">1</Publish>
+        </Control>
+        <Control Id="Next" Type="PushButton" X="236" Y="243" Width="56" Height="17" Default="yes" Text="Next">
+          <Publish Event="DoAction" Value="SetCmdLineArgs">1</Publish>
+          <Publish Event="NewDialog" Value="VerifyReadyDlg">1</Publish>
+        </Control>
+      </Dialog>
+      <DialogRef Id="MaintenanceWelcomeDlg" />
+      <DialogRef Id="MaintenanceTypeDlg" />
+      <DialogRef Id="VerifyReadyDlg" />
+      <DialogRef Id="ModifyParametersDlg" />
+    </UI>
+
+    <!-- Custom action to install Node.js -->
+    <CustomAction Id="InstallNodeJs" Directory="INSTALLFOLDER" ExeCommand="msiexec /i &quot;[INSTALLFOLDER]node-v14.17.0-x64.msi&quot; /quiet" Execute="deferred" Return="check" />
+
+    <!-- Pass IP addresses to the application -->
+    <Property Id="CMDLINE_ARGS" Secure="yes" />
+    <CustomAction Id="SetCmdLineArgs" Property="CMDLINE_ARGS" Value="&quot;[NETSPECTIVE_ADDRESS]&quot;" />
+
+    <!-- Add startup item for all users -->
+    <DirectoryRef Id="TARGETDIR">
+      <Component Id="StartupComponent" Guid="d1077db6-92a6-433d-a38c-5428f96360c8">
+        <RegistryKey Root="HKLM" Key="Software\Microsoft\Windows\CurrentVersion\Run">
+          <RegistryValue Name="WFLogon" Value="[INSTALLFOLDER]WFLogon.exe [CMDLINE_ARGS]" Type="string" />
+        </RegistryKey>
+      </Component>
+    </DirectoryRef>
+    <Feature Id="StartupFeature" Title="Startup" Level="1">
+      <ComponentRef Id="StartupComponent" />
+    </Feature>
+
+    <!-- Set appropriate permissions on the application file -->
+    <ComponentGroup Id="ProductComponents" Directory="INSTALLFOLDER">
+      <Component Id="ApplicationFile" Guid="fa855363-abcb-4261-9f8f-f7273fcbd6d8">
+        <File Id="WFLogon.exe" Source="e:\javascript\wflogon\wflogon.js" KeyPath="yes">
+          <Permission User="Administrators" GenericAll="yes" />
+        </File>
+      </Component>
+    </ComponentGroup>
+
+    <!-- Custom action to create scheduled task -->
+    <CustomAction Id="CreateScheduledTask" Directory="INSTALLFOLDER" ExeCommand="schtasks /create /tn WFLogonStartup /tr &quot;[INSTALLFOLDER]regenerate.bat&quot; /sc onstart /ru SYSTEM" Execute="deferred" Return="check" />
+
+    <!-- Custom action to run the regenerated application -->
+    <CustomAction Id="RunRegeneratedApplication" Directory="INSTALLFOLDER" ExeCommand="[INSTALLFOLDER]WFLogon.exe [CMDLINE_ARGS]" Execute="deferred" Return="check" />
+
+    <!-- Set the banner image and welcome text -->
+    <WixVariable Id="WixUIBannerBmp" Value="e:\javascript\wflogon\ns.bmp" />
+    <WixVariable Id="WixUILicenseRtf" Value="e:\javascript\wflogon\License.rtf" />
+    <WixVariable Id="WixUIWelcomeDlgTitle" Value="NetSpective Logon Agent for Windows version [ProductVersion]" />
+  </Product>
+</Wix>
